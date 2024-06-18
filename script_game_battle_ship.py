@@ -1,3 +1,4 @@
+import random
 
 class BoardException(Exception):
     pass
@@ -12,10 +13,15 @@ class BoardUsedException(BoardException):
     def __str__(self):
         return "Вы уже стреляли в эту клетку!"
 
-# Исключение, возникающее при неправильном размещении корабля на доске
+# Исключение, возникающее при неправильном размещении корабля на доске ADSD
 class BoardWrongShipException(BoardException):
     def __str__(self):
         return "Нельзя поставить корабль таким образом!"
+
+# Исключение, возникающее при неверном формате ввода
+class InvalidInputException(BoardException):
+    def __str__(self):
+        return "Неверный формат ввода! Введите координаты в формате 'x,y' где x и y - числа."
 
 # Класс для представления точки на игровом поле
 class Dot:
@@ -72,7 +78,7 @@ class Board:
         # Размещение корабля на доске
         for dot in ship.dots:
             self.field[dot.x][dot.y] = "■"
-            self.busy.append(dot)
+            self.busy.append(dot) # Добавляем каждую точку корабля в busy
 
         self.ships.append(ship)
         self.contour(ship)
@@ -100,6 +106,8 @@ class Board:
         res += "  | 1 | 2 | 3 | 4 | 5 | 6 |" + "\n"
         for i, row in enumerate(self.field):
             res += f"{i + 1} | {' | '.join(row)} |" + "\n"
+        if self.hid:
+            res = res.replace("■", "O")
         return res
 
     # Метод для проверки выхода точки за пределы поля
@@ -111,10 +119,10 @@ class Board:
         if self.out(dot):
             raise BoardOutException()
 
-        if dot in self.busy:
-            raise BoardUsedException()
+       # if dot in self.busy:
+       #     raise BoardUsedException()
 
-        self.busy.append(dot)
+        self.busy.append(dot)  # Добавляем точку в список занятых
 
         for ship in self.ships:
             if dot in ship.dots:
@@ -132,6 +140,18 @@ class Board:
         print("Промах!")
         return False
 
+    # Метод для случайного размещения кораблей
+    def random_place(self):
+        lens = [3, 2, 2, 1, 1, 1, 1]
+        for l in lens:
+            while True:
+                ship = Ship(Dot(random.randint(0, self.size - 1), random.randint(0, self.size - 1)), l, random.randint(0, 1))
+                try:
+                    self.add_ship(ship)
+                    break
+                except BoardWrongShipException:
+                    pass
+
 # Класс для представления игрока
 class Player:
     def __init__(self, board, enemy_board):
@@ -140,9 +160,23 @@ class Player:
 
     # Метод для запроса координат выстрела
     def ask(self):
-        print("Введите координаты для выстрела (например, '3,4'):")
-        x, y = map(int, input().split(','))  # Ввод координат в формате 'x,y'
-        return Dot(x - 1, y - 1)  # Возвращаем точку с учетом индексации с 0
+        while True:
+            try:
+                print("Введите координаты для выстрела (например, '3,4'):")
+                input_str = input().strip()
+                x, y = map(int, input_str.split(','))
+
+                # Check if coordinates are within the valid range
+                if x < 1 or y < 1 or x > 6 or y > 6:
+                    raise InvalidInputException()
+
+                return Dot(x - 1, y - 1)  # Convert to 0-indexed
+
+            except ValueError:
+                print("Неверный формат ввода! Введите два числа через запятую.")
+            except InvalidInputException as e:
+                print(e)
+
     # Метод для выполнения хода
     def move(self):
         while True:
@@ -155,12 +189,22 @@ class Player:
 
 # Класс для представления игры
 class Game:
-    def __init__(self):
-        self.board = Board()                      # Доска игрока
-        self.enemy_board = Board(hid=True)       # Доска противника
 
-        self.player = Player(self.board, self.enemy_board)   # Игрок
-        self.ai = Player(self.enemy_board, self.board)       # Противник (ИИ)
+    # Метод для создания доски с размещенными кораблями
+    def random_board(self, hid=False):
+        board = None
+        while board is None:
+            board = Board(hid=hid)
+            board.random_place()
+        return board
+
+
+    def __init__(self):
+        self.board = self.random_board(hid=False)           # Доска игрока
+        self.enemy_board = self.random_board(hid=True)      # Доска противника
+
+        self.player = Player(self.board, self.enemy_board)  # Игрок
+        self.ai = Player(self.enemy_board, self.board)      # Противник (ИИ)
 
     # Метод для приветствия игрока и объяснения правил игры
     def greet(self):
@@ -196,10 +240,10 @@ class Game:
             if repeat:
                 num -= 1
 
-            if self.board.ships == 0:
+            if len(self.board.ships) == 0:
                 print("Корабли игрока уничтожены! Компьютер победил!")
                 break
-            elif self.enemy_board.ships == 0:
+            elif len(self.enemy_board.ships) == 0:
                 print("Корабли компьютера уничтожены! Игрок победил!")
                 break
 
