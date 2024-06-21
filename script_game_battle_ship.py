@@ -62,11 +62,10 @@ class Board:
     def __init__(self, hid=False, size=6):
         self.size = size    # Размер игрового поля
         self.hid = hid      # Флаг скрытия кораблей на доске
-
         self.field = [["O"] * size for _ in range(size)]  # Игровое поле
-
         self.busy = []      # Занятые точки на доске
         self.ships = []     # Корабли на доске
+        self.shots = []     # Список для отслеживания выстрелов
 
     # Метод для добавления корабля на доску
     def add_ship(self, ship):
@@ -79,9 +78,8 @@ class Board:
         for dot in ship.dots:
             self.field[dot.x][dot.y] = "■"
             self.busy.append(dot) # Добавляем каждую точку корабля в busy
-
-        self.ships.append(ship)
-        self.contour(ship)
+            self.ships.append(ship)
+            self.contour(ship)
 
     # Метод для обводки корабля на доске
     def contour(self, ship, verb=False):
@@ -119,10 +117,10 @@ class Board:
         if self.out(dot):
             raise BoardOutException()
 
-       # if dot in self.busy:
-       #     raise BoardUsedException()
+        if dot in self.shots:
+            raise BoardUsedException()
 
-        self.busy.append(dot)  # Добавляем точку в список занятых
+        self.shots.append(dot)  # Добавляем точку в список сделанных выстрелов
 
         for ship in self.ships:
             if dot in ship.dots:
@@ -183,12 +181,34 @@ class Player:
             try:
                 target = self.ask()
                 repeat = self.enemy_board.shot(target)
+                if not repeat:  # Если repeat False (промах), переходим к следующему ходу
+                    return
+            except BoardUsedException:
+                print("Вы уже стреляли в эту клетку!")
+            except BoardException as e:
+                print(e)
+
+    # Метод для выполнения автоматического хода компьютера
+    def ai_move(self):
+        while True:
+            try:
+                x = random.randint(0, 5)
+                y = random.randint(0, 5)
+                target = Dot(x, y)
+                repeat = self.enemy_board.shot(target)
                 return repeat
+            except BoardUsedException:
+                continue
             except BoardException as e:
                 print(e)
 
 # Класс для представления игры
 class Game:
+    def __init__(self):
+        self.board = self.random_board(hid=False)  # Доска игрока
+        self.enemy_board = self.random_board(hid=True)  # Доска противника
+        self.player = Player(self.board, self.enemy_board)  # Игрок
+        self.ai = Player(self.enemy_board, self.board)  # Противник (ИИ)
 
     # Метод для создания доски с размещенными кораблями
     def random_board(self, hid=False):
@@ -198,19 +218,9 @@ class Game:
             board.random_place()
         return board
 
-
-    def __init__(self):
-        self.board = self.random_board(hid=False)           # Доска игрока
-        self.enemy_board = self.random_board(hid=True)      # Доска противника
-
-        self.player = Player(self.board, self.enemy_board)  # Игрок
-        self.ai = Player(self.enemy_board, self.board)      # Противник (ИИ)
-
     # Метод для приветствия игрока и объяснения правил игры
     def greet(self):
         print("-------------------")
-
-
         print("   Добро пожаловать в игру 'Морской бой'   ")
         print("-------------------")
         print("   Правила игры:   ")
@@ -221,6 +231,8 @@ class Game:
     # Метод для основного игрового цикла
     def loop(self):
         num = 0
+        total_cells = self.board.size * self.board.size
+
         while True:
             print("-" * 20)
             print("Доска пользователя:")
@@ -228,18 +240,17 @@ class Game:
             print("-" * 20)
             print("Доска компьютера:")
             print(self.enemy_board)
+
             if num % 2 == 0:
                 print("-" * 20)
                 print("Ход игрока!")
-                repeat = self.player.move()
+                self.player.move()
             else:
                 print("-" * 20)
                 print("Ход компьютера!")
-                repeat = self.ai.move()
+                self.ai.ai_move()
 
-            if repeat:
-                num -= 1
-
+            # Проверяем, уничтожены ли все корабли одной из сторон
             if len(self.board.ships) == 0:
                 print("Корабли игрока уничтожены! Компьютер победил!")
                 break
@@ -247,7 +258,12 @@ class Game:
                 print("Корабли компьютера уничтожены! Игрок победил!")
                 break
 
-            num += 1
+            # Проверяем, заполнены ли все клетки на обеих досках
+            if len(self.board.busy) == total_cells or len(self.enemy_board.busy) == total_cells:
+                print("Все клетки заполнены! Игра завершена.")
+                break
+
+            num += 1  # Увеличиваем счетчик ходов
 
     # Метод для запуска игры
     def start(self):
