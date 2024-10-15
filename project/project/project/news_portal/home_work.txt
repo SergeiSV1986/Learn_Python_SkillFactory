@@ -1,0 +1,57 @@
+# Create two users
+User .objects.create_user('user1', rating=0)
+User .objects.create_user('user2', rating=0)
+
+# Create two authors
+author1 = Author.objects.create(user=User.objects.get(username='user1'))
+author2 = Author.objects.create(user=User.objects.get(username='user2'))
+
+# Create four categories
+Category.objects.create(name='Sports')
+Category.objects.create(name='Politics')
+Category.objects.create(name='Education')
+Category.objects.create(name='Entertainment')
+
+# Create two articles and one news
+post1 = Post.objects.create(author=author1, post_type='article', title='Article 1', text='This is article 1', rating=0)
+post2 = Post.objects.create(author=author2, post_type='article', title='Article 2', text='This is article 2', rating=0)
+post3 = Post.objects.create(author=author1, post_type='news', title='News 1', text='This is news 1', rating=0)
+
+# Assign categories to posts
+post1.categories.add(Category.objects.get(name='Sports'))
+post1.categories.add(Category.objects.get(name='Education'))
+post2.categories.add(Category.objects.get(name='Politics'))
+post3.categories.add(Category.objects.get(name='Entertainment'))
+
+# Create at least four comments
+comment1 = Comment.objects.create(post=post1, user=User.objects.get(username='user1'), text='Comment 1', rating=0)
+comment2 = Comment.objects.create(post=post1, user=User.objects.get(username='user2'), text='Comment 2', rating=0)
+comment3 = Comment.objects.create(post=post2, user=User.objects.get(username='user1'), text='Comment 3', rating=0)
+comment4 = Comment.objects.create(post=post3, user=User.objects.get(username='user2'), text='Comment 4', rating=0)
+
+# Apply like() and dislike() functions to posts and comments
+post1.like()
+post1.like()
+post2.dislike()
+comment1.like()
+comment2.dislike()
+comment3.like()
+comment4.dislike()
+
+# Update author ratings
+author1.update_rating()
+author2.update_rating()
+
+# Get the best user
+best_user = User.objects.order_by('-author__rating').first()
+print(f'Best user: {best_user.username} with rating {best_user.author.rating}')
+
+# Get the best post
+best_post = Post.objects.order_by('-rating').first()
+print(f'Best post: {best_post.title} by {best_post.author.user.username} with rating {best_post.rating}')
+print(f'Preview: {best_post.preview()}')
+
+# Get all comments for the best post
+comments = Comment.objects.filter(post=best_post)
+for comment in comments:
+    print(f'Date: {comment.created_at}, User: {comment.user.username}, Rating: {comment.rating}, Text: {comment.text}')
