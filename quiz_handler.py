@@ -428,3 +428,4 @@ async def contact_staff(callback: CallbackQuery, state: FSMContext):
 def send_email_to_staff(subject, body):
     # Используйте библиотеку smtplib или любой другой способ отправки email.
     pass
+#
