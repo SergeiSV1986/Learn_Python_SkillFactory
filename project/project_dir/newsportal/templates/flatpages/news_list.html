@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<!-- yourapp/templates/news_list.html -->
+{% extends 'default.html' %}
+{% load censor %}
+{% block content %}
+<h2>Новости</h2>
+<ul>
+    {% for post in news %}
+        <li>
+            <a href="{% url 'news_detail' post.id %}">{{ post.title|censor }}</a> - {{ post.created_at|date:"d.m.Y" }}<br>
+            {{ post.text|censor|slice:":20" }}...
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}
+</body>
+</html>
